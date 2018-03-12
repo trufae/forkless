@@ -3,8 +3,8 @@
 
 int main(int argc, char **argv) {
 	int i;
-	write(1, "BIN/MAIN\n", 9);
-	for (i = 0; i < argc; i++) {
+	write (1, "$ bin/echo\n", 12);
+	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
 		write (1, arg, strlen (arg));
 		if (i + 1 < argc) {

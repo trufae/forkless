@@ -26,28 +26,17 @@ static void *cb(void *user) {
 }
 
 pthread_t child = 0;
-bool fork_twice = false;
 
 size_t forkless_fork() {
-	if (fork_twice) {
-		fork_twice = false;
-		return 0; //(size_t)child;
+	if (child) {
+		child = 0;
+		return 0;
 	}
 	pthread_t th = NULL;
-#if 0
-	jmp_buf self = {0};
-	if (setjmp (self) == -1) {
-		fprintf (stderr, "Cannot set jmp killing thread\n");
-		// TODO
-	}
-#endif
-	printf ("NEW THREAD\n");
 	pthread_create (&th, NULL, cb, NULL);
 	if (th == NULL) {
 		return -1;
 	}
-	fork_twice = true;
-	// required, because forkless_fork returns first 0
 	child = th;
 	return (size_t)th;
 }
@@ -63,37 +52,32 @@ int forkless_execve (const char *path, char *const argv[],  char *const envp[]) 
 	if (!p) {
 		return -1;
 	}
-printf ("execve\n");
-	int (*bin_main)(int argc, char *const argv[], char *const envp[]);
-	bin_main = dlsym (p, "main");
-printf ("execve2\n");
+	int (*bin_main)(int argc, char *const argv[], char *const envp[]) = dlsym (p, "main");
 	if (!bin_main) {
 		dlclose (p);
-printf ("execve2: cannot find main\n");
 		return -1;
 	}
 	int argc;
 	for (argc = 0; argv[argc]; argc++);
+	// XXX. envp is universal. we need to emulate with forkless_getenv() and forkless_setenv()
 	int rc = bin_main (argc, argv, envp);
 	dlclose (p);
-	pthread_exit (&rc);
-	//pthread_kill (pthread_self (), 9);
-	// forkless_exit (rc);
+	forkless_exit (rc);
 	return rc;
 }
 
 int forkless_waitpid(size_t pid, int *stat, int options) {
 	pthread_t cur = (pthread_t)pid; //pthread_self();
 	int *res = NULL;
-	printf ("WAITPID for %p\n", (void*)(size_t)cur);
 	int err = pthread_join (cur, (void*)&res);
 	if (err == -1) {
 		return -1;
 	}
-	return res? *res: -1;
+	return res? (int)(size_t)res: -1;
 }
 
 void forkless_exit(int rc) {
-	// thread child must die here
-	printf ("exit\n");
+	pthread_exit ((void*)(size_t)rc);
+	// pthread_detach (pthread_self ());
+	// pthread_kill (pthread_self (), 9);
 }
