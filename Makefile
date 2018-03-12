@@ -3,6 +3,8 @@ CFLAGS+=-I.
 
 all: $(OBJ) bin/echo
 	$(CC) $(OBJ)
+	$(MAKE) -C oth/msh
+	$(MAKE) -C oth/ired
 	./a.out
 
 bin/echo:

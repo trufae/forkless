@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include "forkless.h"
 
-jmp_buf env = {0};
+jmp_buf forkless_env = {0};
 
 static void *cb(void *user) {
 	jmp_buf self = {0};
@@ -18,10 +18,11 @@ static void *cb(void *user) {
 		}
 	}
 #endif
-	size_t *envp = (size_t *)env;
+	size_t *envp = (size_t *)forkless_env;
 	envp[1] = selfp[1];
 	envp[2] = selfp[2];
-	longjmp (env, 0); //pthread_self ());
+// printf ("LONGJMP %p\n", env[2]);
+	longjmp (forkless_env, 0);
 	return 0;
 }
 
@@ -32,6 +33,7 @@ size_t forkless_fork() {
 		child = 0;
 		return 0;
 	}
+printf ("FORK DO\n");
 	pthread_t th = NULL;
 	pthread_create (&th, NULL, cb, NULL);
 	if (th == NULL) {
@@ -42,7 +44,12 @@ size_t forkless_fork() {
 }
 
 int forkless_system() {
+	// copypaste from any libc :?
 	return -1;
+}
+
+int forkless_execvp (const char *path, char *const argv[]) {
+	return forkless_execve (path, argv, NULL); // or environ :?
 }
 
 int forkless_execve (const char *path, char *const argv[],  char *const envp[]) {
